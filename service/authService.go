@@ -1,0 +1,156 @@
+package service
+
+import (
+	"fmt"
+	"net/http"
+	"os"
+	"threadStocks/core/utils"
+	"threadStocks/model"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+)
+
+var secretKey = []byte(os.Getenv("SECRET_KEY"))
+
+type AuthService struct {
+	db *gorm.DB
+}
+
+func NewAuthService(db *gorm.DB) *AuthService {
+	return &AuthService{db: db}
+}
+
+func (s *AuthService) LoginService(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var a model.LoginDto
+	var u model.User
+
+	err := utils.BodyDecoder(r, &a)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	s.db.First(&u, "email = ?", a.Email)
+
+	match := checkPasswordHash(a.Password, u.Password)
+	if !match {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	token, tokenErr := creatToken(u.ID)
+	if tokenErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    token,
+		MaxAge:   86400,
+		Path:     "/",
+		Secure:   false,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write([]byte("{}"))
+	if err != nil {
+		return
+	}
+}
+
+func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var a model.RegisterDto
+	var u model.User
+
+	err := utils.BodyDecoder(r, &a)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if a.Password != a.ConfirmPassword {
+		http.Error(w, "Passwords isn't same", http.StatusBadRequest)
+		return
+	}
+
+	hashedPwd, err := hashPassword(a.Password)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	u.Email = a.Email
+	u.Username = a.Username
+	u.Password = hashedPwd
+	u.CreatedAt = time.Now()
+	u.UpdatedAt = time.Now()
+
+	result := s.db.Create(&u)
+	if result.Error != nil {
+		http.Error(w, result.Error.Error(), http.StatusBadRequest)
+		return
+	}
+
+	token, err := creatToken(u.ID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    token,
+		MaxAge:   86400,
+		Path:     "/",
+		Secure:   false,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write([]byte("{}"))
+	if err != nil {
+		return
+	}
+}
+
+func creatToken(userID uint) (string, error) {
+	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": fmt.Sprintf("%d", userID),
+		"iss": "tempestboard",
+		"exp": time.Now().Add(time.Hour * 72).Unix(),
+		"iat": time.Now().Unix(),
+	})
+
+	tokenString, err := claims.SignedString(secretKey)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
+}
+
+func checkPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
