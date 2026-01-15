@@ -4,46 +4,34 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"threadStocks/core/utils"
 	"threadStocks/model"
 
 	"gorm.io/gorm"
 )
 
-type UserService struct {
+type ThreadService struct {
 	db *gorm.DB
 }
 
-func NewUserService(db *gorm.DB) *UserService {
-	return &UserService{db: db}
+func NewThreadService(db *gorm.DB) *ThreadService {
+	return &ThreadService{db: db}
 }
 
-func (s *UserService) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
+func (s *ThreadService) GetThread(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	var user model.User
-	token, err := utils.GetTokenFromCookie(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
 
-	uid, tokenErr := token.Claims.GetSubject()
-	if tokenErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	res := s.db.First(&user, "id = ?", uid)
+	var thread model.Thread
+	res := s.db.First(&thread, "id = ?", r.PathValue("id"))
 	if res.Error != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-
-	jsonData, jsonErr := json.Marshal(user)
+	jsonData, jsonErr := json.Marshal(thread)
 	if jsonErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Error marshaling user to JSON: %v", jsonErr)
@@ -55,11 +43,12 @@ func (s *UserService) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = w.Write(jsonData)
+	_, err := w.Write(jsonData)
 	if err != nil {
 		log.Printf("Error writing response: %v", err)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+
 }

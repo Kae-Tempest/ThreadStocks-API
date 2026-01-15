@@ -19,12 +19,12 @@ func chain(h http.Handler, middlewares ...func(http.Handler) http.Handler) http.
 }
 
 func Router(s *http.ServeMux, a *core.App) {
-	s.HandleFunc("/login", a.Controllers.Auth.HandleLogin)
-	s.HandleFunc("/register", a.Controllers.Auth.HandleRegister)
+	s.HandleFunc("/login", a.Controller.Auth.HandleLogin)
+	s.HandleFunc("/register", a.Controller.Auth.HandleRegister)
 	s.Handle("/users/me", chain(
-		http.HandlerFunc(a.Controllers.User.Me),
+		http.HandlerFunc(a.Controller.User.Me),
 		core.AuthMiddleware))
-	s.Handle("/projects", chain(
-		http.HandlerFunc(a.Controllers.Project.Create),
+	s.Handle("/threads/{id}", chain(
+		http.HandlerFunc(a.Controller.Thread.GetThread),
 		core.AuthMiddleware))
 }
