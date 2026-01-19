@@ -11,8 +11,10 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"threadStocks/model"
 
 	"github.com/golang-jwt/jwt/v5"
+	"gorm.io/gorm"
 )
 
 var secretKey = []byte(os.Getenv("SECRET_KEY"))
@@ -238,4 +240,26 @@ func GetTokenFromCookie(r *http.Request) (*jwt.Token, error) {
 	}
 
 	return token, nil
+}
+
+func GetUserFromToken(r *http.Request, w http.ResponseWriter, db *gorm.DB) (model.User, error) {
+	token, err := GetTokenFromCookie(r)
+	if err != nil {
+		return model.User{}, err
+	}
+
+	var user model.User
+
+	uid, tokenErr := token.Claims.GetSubject()
+	if tokenErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return model.User{}, tokenErr
+	}
+	res := db.First(&user, "id = ?", uid)
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return model.User{}, res.Error
+	}
+
+	return user, nil
 }

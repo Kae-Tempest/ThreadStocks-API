@@ -24,22 +24,7 @@ func (s *UserService) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var user model.User
-	token, err := utils.GetTokenFromCookie(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	uid, tokenErr := token.Claims.GetSubject()
-	if tokenErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	res := s.db.First(&user, "id = ?", uid)
-	if res.Error != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	user, err := utils.GetUserFromToken(r, w, s.db)
 
 	w.Header().Set("Content-Type", "application/json")
 

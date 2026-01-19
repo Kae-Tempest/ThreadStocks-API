@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"threadStocks/core/utils"
 	"threadStocks/model"
 
 	"gorm.io/gorm"
@@ -52,3 +53,43 @@ func (s *ThreadService) GetThread(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 }
+
+func (s *ThreadService) CreateThread(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var dto model.ThreadDto
+	var t model.Thread
+
+	err := utils.BodyDecoder(r, &dto)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	t.UserID, err = utils.GetUserFromToken(r, w, s.db)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	t.IsC = dto.IsC
+	t.IsE = dto.IsE
+	t.ThreadId = dto.ThreadId
+	t.Brand = dto.Brand
+
+	result := s.db.Create(&t)
+	if result.Error != nil {
+		http.Error(w, result.Error.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write([]byte("{}"))
+	if err != nil {
+		return
+	}
+}
+func (s *ThreadService) UpdateThread(w http.ResponseWriter, r *http.Request) {}
+func (s *ThreadService) DeleteThread(w http.ResponseWriter, r *http.Request) {}

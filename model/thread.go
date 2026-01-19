@@ -6,9 +6,17 @@ import (
 
 type Thread struct {
 	gorm.Model
-	ThreadId int    `gorm:"unique" json:"thread_id"` // check if needed to have string and not just int
+	UserID   User   `gorm:"foreignkey:UserID"`
+	ThreadId string `gorm:"unique" json:"thread_id"`
 	IsE      bool   `json:"is_e"`
 	IsC      bool   `json:"is_c"`
 	Brand    string `json:"brand"`
 	Count    int    `json:"count"`
+}
+
+type ThreadDto struct {
+	ThreadId string `json:"thread_id"`
+	IsE      bool   `json:"is_e"`
+	IsC      bool   `json:"is_c"`
+	Brand    string `json:"brand"`
 }

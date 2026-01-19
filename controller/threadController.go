@@ -16,3 +16,14 @@ func NewThreadController(service *service.Service) *ThreadController {
 func (c *ThreadController) GetThread(w http.ResponseWriter, r *http.Request) {
 	c.service.Thread.GetThread(w, r)
 }
+
+// CREATE
+func (c *ThreadController) CreateThread(w http.ResponseWriter, r *http.Request) {
+
+}
+
+// UPDATE
+func (c *ThreadController) UpdateThread(w http.ResponseWriter, r *http.Request) {}
+
+// DELETE
+func (c *ThreadController) DeleteThread(w http.ResponseWriter, r *http.Request) {}
