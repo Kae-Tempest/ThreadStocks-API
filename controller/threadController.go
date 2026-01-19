@@ -19,7 +19,7 @@ func (c *ThreadController) GetThread(w http.ResponseWriter, r *http.Request) {
 
 // CREATE
 func (c *ThreadController) CreateThread(w http.ResponseWriter, r *http.Request) {
-
+	c.service.Thread.CreateThread(w, r)
 }
 
 // UPDATE
