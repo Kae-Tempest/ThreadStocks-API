@@ -6,7 +6,7 @@ import (
 
 type Thread struct {
 	gorm.Model
-	User     User   `gorm:"foreignkey:user"`
+	User     User   `gorm:"foreignkey:ID"`
 	ThreadId string `gorm:"unique" json:"thread_id"`
 	IsE      bool   `json:"is_e"`
 	IsC      bool   `json:"is_c"`

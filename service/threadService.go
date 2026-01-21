@@ -109,7 +109,7 @@ func (s *ThreadService) UpdateThread(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if t.User != u {
+	if t.User.ID != u.ID {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -169,7 +169,7 @@ func (s *ThreadService) DeleteThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if t.User != u {
+	if t.User.ID != u.ID {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -289,7 +289,7 @@ func (s *ThreadService) UpdateMultipleThread(w http.ResponseWriter, r *http.Requ
 	}
 
 	for i := range t {
-		if t[i].User != u {
+		if t[i].User.ID != u.ID {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -350,7 +350,7 @@ func (s *ThreadService) DeleteMultipleThread(w http.ResponseWriter, r *http.Requ
 	}
 
 	for i := range t {
-		if t[i].User != u {
+		if t[i].User.ID != u.ID {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}

@@ -9,6 +9,7 @@ import (
 	"threadStocks/controller"
 	"threadStocks/core"
 	"threadStocks/database"
+	"threadStocks/model"
 	"threadStocks/router"
 
 	"github.com/joho/godotenv"
@@ -23,7 +24,7 @@ func main() {
 
 	app, appErr := app()
 	if appErr != nil {
-		fmt.Printf("Failed to initialize application: %v\n", err)
+		fmt.Printf("Failed to initialize application: %v\n", appErr)
 		os.Exit(1)
 	}
 
@@ -51,7 +52,7 @@ func app() (*core.App, error) {
 
 	a.Controller = controller.NewControllers(a.DB)
 
-	err = a.DB.AutoMigrate(&models.User{})
+	err = a.DB.AutoMigrate(&model.User{}, &model.Thread{})
 	if err != nil {
 		return nil, err
 	}

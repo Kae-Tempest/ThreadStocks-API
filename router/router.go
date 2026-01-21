@@ -27,19 +27,19 @@ func Router(s *http.ServeMux, a *core.App) {
 	s.Handle("/threads/{id}", chain(
 		http.HandlerFunc(a.Controller.Thread.GetThread),
 		core.AuthMiddleware))
-	s.Handle("/threads", chain(
+	s.Handle("/threads/create", chain(
 		http.HandlerFunc(a.Controller.Thread.CreateThread),
 		core.AuthMiddleware))
-	s.Handle("/threads/{id}", chain(
+	s.Handle("/threads/update/{id}", chain(
 		http.HandlerFunc(a.Controller.Thread.UpdateThread),
 		core.AuthMiddleware))
-	s.Handle("/threads/{id}", chain(
+	s.Handle("/threads/delete/{id}", chain(
 		http.HandlerFunc(a.Controller.Thread.DeleteThread),
 		core.AuthMiddleware))
-	s.Handle("/threads", chain(
+	s.Handle("/threads/delete", chain(
 		http.HandlerFunc(a.Controller.Thread.DeleteMultipleThread),
 		core.AuthMiddleware))
-	s.Handle("/threads", chain(
+	s.Handle("/threads/update", chain(
 		http.HandlerFunc(a.Controller.Thread.UpdateMultipleThread),
 		core.AuthMiddleware))
 }
