@@ -36,9 +36,9 @@ func (s *ThreadService) GetThread(w http.ResponseWriter, r *http.Request) {
 	if jsonErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Error marshaling user to JSON: %v", jsonErr)
-		err := json.NewEncoder(w).Encode(map[string]string{"error": "Failed to serialize user data"})
+		err := json.NewEncoder(w).Encode(map[string]string{"error": "Failed to serialize data"})
 		if err != nil {
-			log.Printf("Error serializing user to JSON: %v", err)
+			log.Printf("Error serializing data to JSON: %v", err)
 			return
 		}
 		return
@@ -53,7 +53,6 @@ func (s *ThreadService) GetThread(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 }
-
 func (s *ThreadService) CreateThread(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -68,7 +67,7 @@ func (s *ThreadService) CreateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t.UserID, err = utils.GetUserFromToken(r, w, s.db)
+	t.User, err = utils.GetUserFromToken(r, w, s.db)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -91,5 +90,97 @@ func (s *ThreadService) CreateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-func (s *ThreadService) UpdateThread(w http.ResponseWriter, r *http.Request) {}
-func (s *ThreadService) DeleteThread(w http.ResponseWriter, r *http.Request) {}
+func (s *ThreadService) UpdateThread(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "PATCH" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var t model.Thread
+
+	err := utils.BodyDecoder(r, &t)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	u, err := utils.GetUserFromToken(r, w, s.db)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if t.User != u {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var thread model.Thread
+	res := s.db.First(&thread, "id = ?", t.ID)
+	if res.Error != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	t.UpdateFields(&thread)
+
+	if err := s.db.Save(&t).Error; err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write([]byte("{}"))
+	if err != nil {
+	jsonData, jsonErr := json.Marshal(t)
+	if jsonErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Error marshaling user to JSON: %v", jsonErr)
+		err := json.NewEncoder(w).Encode(map[string]string{"error": "Failed to serialize data"})
+		if err != nil {
+			log.Printf("Error serializing data to JSON: %v", err)
+			return
+		}
+		return
+	}
+
+	_, err = w.Write(jsonData)
+	if err != nil {
+		log.Printf("Error writing response: %v", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+}
+func (s *ThreadService) DeleteThread(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "DELETE" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var t model.Thread
+	res := s.db.First(&t, "id = ?", r.PathValue("id"))
+	if res.Error != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	u, err := utils.GetUserFromToken(r, w, s.db)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if t.User != u {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	res = s.db.Delete(&t)
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+
+}

@@ -6,7 +6,7 @@ import (
 
 type Thread struct {
 	gorm.Model
-	UserID   User   `gorm:"foreignkey:UserID"`
+	User     User   `gorm:"foreignkey:user"`
 	ThreadId string `gorm:"unique" json:"thread_id"`
 	IsE      bool   `json:"is_e"`
 	IsC      bool   `json:"is_c"`
@@ -19,4 +19,11 @@ type ThreadDto struct {
 	IsE      bool   `json:"is_e"`
 	IsC      bool   `json:"is_c"`
 	Brand    string `json:"brand"`
+}
+
+func (t *Thread) UpdateFields(other *Thread) {
+	t.IsE = other.IsE
+	t.IsC = other.IsC
+	t.Brand = other.Brand
+	t.Count = other.Count
 }

@@ -17,13 +17,14 @@ func (c *ThreadController) GetThread(w http.ResponseWriter, r *http.Request) {
 	c.service.Thread.GetThread(w, r)
 }
 
-// CREATE
 func (c *ThreadController) CreateThread(w http.ResponseWriter, r *http.Request) {
 	c.service.Thread.CreateThread(w, r)
 }
 
-// UPDATE
-func (c *ThreadController) UpdateThread(w http.ResponseWriter, r *http.Request) {}
+func (c *ThreadController) UpdateThread(w http.ResponseWriter, r *http.Request) {
+	c.service.Thread.UpdateThread(w, r)
+}
 
-// DELETE
-func (c *ThreadController) DeleteThread(w http.ResponseWriter, r *http.Request) {}
+func (c *ThreadController) DeleteThread(w http.ResponseWriter, r *http.Request) {
+	c.service.Thread.DeleteThread(w, r)
+}
