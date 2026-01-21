@@ -129,8 +129,6 @@ func (s *ThreadService) UpdateThread(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write([]byte("{}"))
-	if err != nil {
 	jsonData, jsonErr := json.Marshal(t)
 	if jsonErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -183,4 +181,186 @@ func (s *ThreadService) DeleteThread(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 
+}
+func (s *ThreadService) GetAllThreadByUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	u, err := utils.GetUserFromToken(r, w, s.db)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var threads []model.Thread
+	res := s.db.Find(&threads, "user_id = ?", u.ID)
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	jsonData, jsonErr := json.Marshal(threads)
+	if jsonErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Error marshaling user to JSON: %v", jsonErr)
+		err := json.NewEncoder(w).Encode(map[string]string{"error": "Failed to serialize data"})
+		if err != nil {
+			log.Printf("Error serializing data to JSON: %v", err)
+			return
+		}
+		return
+	}
+
+	_, err = w.Write(jsonData)
+	if err != nil {
+		log.Printf("Error writing response: %v", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+}
+func (s *ThreadService) GetAllThreadByBrand(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var t model.Thread
+
+	err := utils.BodyDecoder(r, &t)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	u, err := utils.GetUserFromToken(r, w, s.db)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var threads []model.Thread
+	res := s.db.Find(&threads, "user_id = ?, brand = ?", u.ID, t.Brand)
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	jsonData, jsonErr := json.Marshal(threads)
+	if jsonErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Error marshaling user to JSON: %v", jsonErr)
+		err := json.NewEncoder(w).Encode(map[string]string{"error": "Failed to serialize data"})
+		if err != nil {
+			log.Printf("Error serializing data to JSON: %v", err)
+			return
+		}
+		return
+	}
+
+	_, err = w.Write(jsonData)
+	if err != nil {
+		log.Printf("Error writing response: %v", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+func (s *ThreadService) UpdateMultipleThread(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "PATCH" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var t []model.Thread
+
+	err := utils.BodyDecoder(r, &t)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	u, err := utils.GetUserFromToken(r, w, s.db)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for i := range t {
+		if t[i].User != u {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		var thread model.Thread
+		res := s.db.First(&thread, "id = ?", t[i].ID)
+		if res.Error != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		t[i].UpdateFields(&thread)
+
+		if err := s.db.Save(&t[i]).Error; err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	jsonData, jsonErr := json.Marshal(t)
+	if jsonErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Error marshaling user to JSON: %v", jsonErr)
+		err := json.NewEncoder(w).Encode(map[string]string{"error": "Failed to serialize data"})
+		if err != nil {
+			log.Printf("Error serializing data to JSON: %v", err)
+			return
+		}
+		return
+	}
+
+	_, err = w.Write(jsonData)
+	if err != nil {
+		log.Printf("Error writing response: %v", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+func (s *ThreadService) DeleteMultipleThread(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "DELETE" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var t []model.Thread
+	res := s.db.First(&t, "id = ?", r.PathValue("id"))
+	if res.Error != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	u, err := utils.GetUserFromToken(r, w, s.db)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for i := range t {
+		if t[i].User != u {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		res = s.db.Delete(&t[i])
+		if res.Error != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
