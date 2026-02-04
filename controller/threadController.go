@@ -17,6 +17,10 @@ func (c *ThreadController) GetThread(w http.ResponseWriter, r *http.Request) {
 	c.service.Thread.GetThread(w, r)
 }
 
+func (c *ThreadController) GetAllThreadByUser(w http.ResponseWriter, r *http.Request) {
+	c.service.Thread.GetAllThreadByUser(w, r)
+}
+
 func (c *ThreadController) CreateThread(w http.ResponseWriter, r *http.Request) {
 	c.service.Thread.CreateThread(w, r)
 }

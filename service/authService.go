@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"threadStocks/core/utils"
@@ -79,17 +80,21 @@ func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
 
 	err := utils.BodyDecoder(r, &a)
 	if err != nil {
+		slog.Error("Bad Request")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if a.Password != a.ConfirmPassword {
+		slog.Info(`P: %s, CP: %s`, a.Password, a.ConfirmPassword)
+		slog.Error("Passwords isn't same")
 		http.Error(w, "Passwords isn't same", http.StatusBadRequest)
 		return
 	}
 
 	hashedPwd, err := hashPassword(a.Password)
 	if err != nil {
+		slog.Error("Error hashing password")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -102,12 +107,14 @@ func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
 
 	result := s.db.Create(&u)
 	if result.Error != nil {
+		slog.Error("Error during creation in db")
 		http.Error(w, result.Error.Error(), http.StatusBadRequest)
 		return
 	}
 
 	token, err := creatToken(u.ID)
 	if err != nil {
+		slog.Error("Error creating token")
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 

@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"threadStocks/controller"
@@ -17,10 +17,7 @@ import (
 
 func main() {
 
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatalf("Error loading .env file: %s", err)
-	}
+	_ = godotenv.Load(".env")
 
 	app, appErr := app()
 	if appErr != nil {
@@ -31,7 +28,8 @@ func main() {
 	mux := http.NewServeMux()
 	router.Router(mux, app)
 
-	err = http.ListenAndServe(":8080", mux)
+	slog.Info("Listening on port 8080")
+	err := http.ListenAndServe(":8080", mux)
 	if errors.Is(err, http.ErrServerClosed) {
 		fmt.Println("http server closed")
 	} else if err != nil {

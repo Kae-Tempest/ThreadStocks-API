@@ -24,6 +24,9 @@ func Router(s *http.ServeMux, a *core.App) {
 	s.Handle("/users/me", chain(
 		http.HandlerFunc(a.Controller.User.Me),
 		core.AuthMiddleware))
+	s.Handle("/threads", chain(
+		http.HandlerFunc(a.Controller.Thread.GetAllThreadByUser),
+		core.AuthMiddleware))
 	s.Handle("/threads/{id}", chain(
 		http.HandlerFunc(a.Controller.Thread.GetThread),
 		core.AuthMiddleware))

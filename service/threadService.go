@@ -67,11 +67,12 @@ func (s *ThreadService) CreateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t.User, err = utils.GetUserFromToken(r, w, s.db)
+	user, err := utils.GetUserFromToken(r, w, s.db)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	t.UserID = user.ID
 	t.IsC = dto.IsC
 	t.IsE = dto.IsE
 	t.ThreadId = dto.ThreadId
@@ -109,27 +110,28 @@ func (s *ThreadService) UpdateThread(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if t.User.ID != u.ID {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
 
 	var thread model.Thread
-	res := s.db.First(&thread, "id = ?", t.ID)
+	res := s.db.First(&thread, "id = ?", r.PathValue("id"))
 	if res.Error != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	t.UpdateFields(&thread)
+	if thread.UserID != u.ID {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
-	if err := s.db.Save(&t).Error; err != nil {
+	thread.UpdateFields(&t)
+
+	if err := s.db.Save(&thread).Error; err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonData, jsonErr := json.Marshal(t)
+	jsonData, jsonErr := json.Marshal(thread)
 	if jsonErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Error marshaling user to JSON: %v", jsonErr)
@@ -169,7 +171,7 @@ func (s *ThreadService) DeleteThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if t.User.ID != u.ID {
+	if t.UserID != u.ID {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -241,7 +243,7 @@ func (s *ThreadService) GetAllThreadByBrand(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	var threads []model.Thread
-	res := s.db.Find(&threads, "user_id = ?, brand = ?", u.ID, t.Brand)
+	res := s.db.Find(&threads, "user_id = ? AND brand = ?", u.ID, t.Brand)
 	if res.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -289,11 +291,6 @@ func (s *ThreadService) UpdateMultipleThread(w http.ResponseWriter, r *http.Requ
 	}
 
 	for i := range t {
-		if t[i].User.ID != u.ID {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
 		var thread model.Thread
 		res := s.db.First(&thread, "id = ?", t[i].ID)
 		if res.Error != nil {
@@ -301,12 +298,18 @@ func (s *ThreadService) UpdateMultipleThread(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		t[i].UpdateFields(&thread)
+		if thread.UserID != u.ID {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
 
-		if err := s.db.Save(&t[i]).Error; err != nil {
+		thread.UpdateFields(&t[i])
+
+		if err := s.db.Save(&thread).Error; err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		t[i] = thread
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -337,9 +340,9 @@ func (s *ThreadService) DeleteMultipleThread(w http.ResponseWriter, r *http.Requ
 	}
 
 	var t []model.Thread
-	res := s.db.First(&t, "id = ?", r.PathValue("id"))
-	if res.Error != nil {
-		w.WriteHeader(http.StatusNotFound)
+	err := utils.BodyDecoder(r, &t)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -350,12 +353,19 @@ func (s *ThreadService) DeleteMultipleThread(w http.ResponseWriter, r *http.Requ
 	}
 
 	for i := range t {
-		if t[i].User.ID != u.ID {
+		var thread model.Thread
+		res := s.db.First(&thread, "id = ?", t[i].ID)
+		if res.Error != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		if thread.UserID != u.ID {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		res = s.db.Delete(&t[i])
+		res = s.db.Delete(&thread)
 		if res.Error != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return

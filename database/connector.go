@@ -11,7 +11,11 @@ import (
 
 func NewConnection() (*gorm.DB, error) {
 
-	port, err := strconv.ParseInt(os.Getenv("DB_PORT"), 10, 64)
+	portStr := os.Getenv("DB_PORT")
+	if portStr == "" {
+		portStr = "5432"
+	}
+	port, err := strconv.ParseInt(portStr, 10, 64)
 	if err != nil {
 		return nil, err
 	}

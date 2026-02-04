@@ -6,8 +6,9 @@ import (
 
 type Thread struct {
 	gorm.Model
-	User     User   `gorm:"foreignkey:ID"`
-	ThreadId string `gorm:"unique" json:"thread_id"`
+	UserID   uint   `gorm:"uniqueIndex:idx_user_thread" json:"user_id"`
+	User     User   `gorm:"foreignKey:UserID" json:"-"`
+	ThreadId string `gorm:"uniqueIndex:idx_user_thread" json:"thread_id"`
 	IsE      bool   `json:"is_e"`
 	IsC      bool   `json:"is_c"`
 	Brand    string `json:"brand"`

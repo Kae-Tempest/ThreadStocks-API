@@ -255,7 +255,7 @@ func GetUserFromToken(r *http.Request, w http.ResponseWriter, db *gorm.DB) (mode
 		w.WriteHeader(http.StatusInternalServerError)
 		return model.User{}, tokenErr
 	}
-	res := db.First(&user, "id = ?", uid)
+	res := db.Preload("Threads").First(&user, "id = ?", uid)
 	if res.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return model.User{}, res.Error
