@@ -20,6 +20,7 @@ type ThreadDto struct {
 	IsE      bool   `json:"is_e"`
 	IsC      bool   `json:"is_c"`
 	Brand    string `json:"brand"`
+	Count    int    `json:"count"`
 }
 
 func (t *Thread) UpdateFields(other *Thread) {

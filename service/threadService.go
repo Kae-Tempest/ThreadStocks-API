@@ -77,6 +77,7 @@ func (s *ThreadService) CreateThread(w http.ResponseWriter, r *http.Request) {
 	t.IsE = dto.IsE
 	t.ThreadId = dto.ThreadId
 	t.Brand = dto.Brand
+	t.Count = dto.Count
 
 	result := s.db.Create(&t)
 	if result.Error != nil {
