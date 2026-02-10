@@ -49,6 +49,7 @@ func (s *AuthService) LoginService(w http.ResponseWriter, r *http.Request) {
 	token, tokenErr := creatToken(u.ID)
 	if tokenErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	http.SetCookie(w, &http.Cookie{
@@ -61,8 +62,8 @@ func (s *AuthService) LoginService(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write([]byte("{}"))
 	if err != nil {
 		return
@@ -116,6 +117,7 @@ func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("Error creating token")
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	http.SetCookie(w, &http.Cookie{
@@ -128,8 +130,8 @@ func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write([]byte("{}"))
 	if err != nil {
 		return

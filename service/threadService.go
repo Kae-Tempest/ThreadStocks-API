@@ -44,14 +44,12 @@ func (s *ThreadService) GetThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	_, err := w.Write(jsonData)
 	if err != nil {
 		log.Printf("Error writing response: %v", err)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
-
 }
 func (s *ThreadService) CreateThread(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
@@ -72,6 +70,9 @@ func (s *ThreadService) CreateThread(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+    // TODO : fix Count do not register correctly
+
 	t.UserID = user.ID
 	t.IsC = dto.IsC
 	t.IsE = dto.IsE
@@ -85,15 +86,15 @@ func (s *ThreadService) CreateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write([]byte("{}"))
 	if err != nil {
 		return
 	}
 }
 func (s *ThreadService) UpdateThread(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "PATCH" {
+	if r.Method != "PATCH" || r.Method != "PUT" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -144,14 +145,12 @@ func (s *ThreadService) UpdateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(jsonData)
 	if err != nil {
 		log.Printf("Error writing response: %v", err)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
-
 }
 func (s *ThreadService) DeleteThread(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "DELETE" {
@@ -182,7 +181,7 @@ func (s *ThreadService) DeleteThread(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 
 }
 func (s *ThreadService) GetAllThreadByUser(w http.ResponseWriter, r *http.Request) {
@@ -215,14 +214,12 @@ func (s *ThreadService) GetAllThreadByUser(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(jsonData)
 	if err != nil {
 		log.Printf("Error writing response: %v", err)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
-
 }
 func (s *ThreadService) GetAllThreadByBrand(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
@@ -263,16 +260,15 @@ func (s *ThreadService) GetAllThreadByBrand(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(jsonData)
 	if err != nil {
 		log.Printf("Error writing response: %v", err)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
 }
 func (s *ThreadService) UpdateMultipleThread(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "PATCH" {
+	if r.Method != "PATCH" && r.Method != "PUT" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -326,13 +322,12 @@ func (s *ThreadService) UpdateMultipleThread(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(jsonData)
 	if err != nil {
 		log.Printf("Error writing response: %v", err)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
 }
 func (s *ThreadService) DeleteMultipleThread(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "DELETE" {
@@ -373,5 +368,5 @@ func (s *ThreadService) DeleteMultipleThread(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }

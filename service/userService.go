@@ -23,28 +23,24 @@ func (s *UserService) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	var user model.User
 	user, err := utils.GetUserFromToken(r, w, s.db)
-
-	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		// GetUserFromToken already writes error status to w
+		return
+	}
 
 	jsonData, jsonErr := json.Marshal(user)
 	if jsonErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Error marshaling user to JSON: %v", jsonErr)
-		err := json.NewEncoder(w).Encode(map[string]string{"error": "Failed to serialize user data"})
-		if err != nil {
-			log.Printf("Error serializing user to JSON: %v", err)
-			return
-		}
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(jsonData)
 	if err != nil {
 		log.Printf("Error writing response: %v", err)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
 }
