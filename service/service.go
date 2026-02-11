@@ -1,6 +1,8 @@
 package service
 
 import (
+	"log/slog"
+
 	"gorm.io/gorm"
 )
 
@@ -11,11 +13,11 @@ type Service struct {
 	// Add other services here
 }
 
-func NewServices(db *gorm.DB) *Service {
+func NewServices(db *gorm.DB, logger *slog.Logger) *Service {
 	return &Service{
-		Auth:   NewAuthService(db),
-		User:   NewUserService(db),
-		Thread: NewThreadService(db),
+		Auth:   NewAuthService(db, logger),
+		User:   NewUserService(db, logger),
+		Thread: NewThreadService(db, logger),
 		// Initialize other services
 	}
 }

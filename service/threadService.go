@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"log"
+	"log/slog"
 	"net/http"
 	"threadStocks/core/utils"
 	"threadStocks/model"
@@ -11,11 +12,12 @@ import (
 )
 
 type ThreadService struct {
-	db *gorm.DB
+	db     *gorm.DB
+	logger *slog.Logger
 }
 
-func NewThreadService(db *gorm.DB) *ThreadService {
-	return &ThreadService{db: db}
+func NewThreadService(db *gorm.DB, logger *slog.Logger) *ThreadService {
+	return &ThreadService{db: db, logger: logger}
 }
 
 func (s *ThreadService) GetThread(w http.ResponseWriter, r *http.Request) {

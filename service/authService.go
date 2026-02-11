@@ -17,11 +17,12 @@ import (
 var secretKey = []byte(os.Getenv("SECRET_KEY"))
 
 type AuthService struct {
-	db *gorm.DB
+	db     *gorm.DB
+	logger *slog.Logger
 }
 
-func NewAuthService(db *gorm.DB) *AuthService {
-	return &AuthService{db: db}
+func NewAuthService(db *gorm.DB, logger *slog.Logger) *AuthService {
+	return &AuthService{db: db, logger: logger}
 }
 
 func (s *AuthService) LoginService(w http.ResponseWriter, r *http.Request) {

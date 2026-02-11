@@ -44,11 +44,16 @@ func app() (*core.App, error) {
 		return nil, fmt.Errorf("database connection error: %v", err)
 	}
 
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource: true,
+	}))
+
 	a := &core.App{
-		DB: db,
+		DB:     db,
+		Logger: logger,
 	}
 
-	a.Controller = controller.NewControllers(a.DB)
+	a.Controller = controller.NewControllers(a.DB, a.Logger)
 
 	err = a.DB.AutoMigrate(&model.User{}, &model.Thread{})
 	if err != nil {

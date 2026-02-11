@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"log"
+	"log/slog"
 	"net/http"
 	"threadStocks/core/utils"
 
@@ -10,11 +11,12 @@ import (
 )
 
 type UserService struct {
-	db *gorm.DB
+	db     *gorm.DB
+	logger *slog.Logger
 }
 
-func NewUserService(db *gorm.DB) *UserService {
-	return &UserService{db: db}
+func NewUserService(db *gorm.DB, logger *slog.Logger) *UserService {
+	return &UserService{db: db, logger: logger}
 }
 
 func (s *UserService) GetCurrentUser(w http.ResponseWriter, r *http.Request) {

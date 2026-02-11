@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"log/slog"
 	"threadStocks/service"
 
 	"gorm.io/gorm"
@@ -13,8 +14,8 @@ type Controller struct {
 	// Add other controllers here
 }
 
-func NewControllers(db *gorm.DB) *Controller {
-	newServices := service.NewServices(db)
+func NewControllers(db *gorm.DB, logger *slog.Logger) *Controller {
+	newServices := service.NewServices(db, logger)
 
 	return &Controller{
 		Auth:   NewAuthController(newServices),
