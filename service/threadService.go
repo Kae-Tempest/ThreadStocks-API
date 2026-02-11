@@ -71,14 +71,12 @@ func (s *ThreadService) CreateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-    // TODO : fix Count do not register correctly
-
 	t.UserID = user.ID
 	t.IsC = dto.IsC
 	t.IsE = dto.IsE
 	t.ThreadId = dto.ThreadId
 	t.Brand = dto.Brand
-	t.Count = dto.Count
+	t.ThreadCount = dto.ThreadCount
 
 	result := s.db.Create(&t)
 	if result.Error != nil {
@@ -94,22 +92,21 @@ func (s *ThreadService) CreateThread(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (s *ThreadService) UpdateThread(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "PATCH" || r.Method != "PUT" {
+	if r.Method != "PATCH" && r.Method != "PUT" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
-	var t model.Thread
-
-	err := utils.BodyDecoder(r, &t)
+	var data map[string]interface{}
+	err := utils.BodyDecoder(r, &data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	u, err := utils.GetUserFromToken(r, w, s.db)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	u, errToken := utils.GetUserFromToken(r, w, s.db)
+	if errToken != nil {
+		http.Error(w, errToken.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -125,9 +122,8 @@ func (s *ThreadService) UpdateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	thread.UpdateFields(&t)
-
-	if err := s.db.Save(&thread).Error; err != nil {
+	if err := s.db.Model(&thread).Updates(data).Error; err != nil {
+		log.Printf("Error updating thread: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -137,11 +133,6 @@ func (s *ThreadService) UpdateThread(w http.ResponseWriter, r *http.Request) {
 	if jsonErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Error marshaling user to JSON: %v", jsonErr)
-		err := json.NewEncoder(w).Encode(map[string]string{"error": "Failed to serialize data"})
-		if err != nil {
-			log.Printf("Error serializing data to JSON: %v", err)
-			return
-		}
 		return
 	}
 

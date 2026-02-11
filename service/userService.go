@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"threadStocks/core/utils"
-	"threadStocks/model"
 
 	"gorm.io/gorm"
 )
