@@ -7,6 +7,8 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 )
 
 func NewConnection() (*gorm.DB, error) {
@@ -31,5 +33,12 @@ func NewConnection() (*gorm.DB, error) {
 		DSN:                  dsn,
 		PreferSimpleProtocol: true,
 	}), &gorm.Config{})
+
+	if dbErr == nil {
+		if err := db.Use(otelgorm.NewPlugin()); err != nil {
+			return nil, err
+		}
+	}
+
 	return db, dbErr
 }
