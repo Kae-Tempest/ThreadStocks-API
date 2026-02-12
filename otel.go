@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
 const collectorEndpoint = "docker-monitoring-collector.docker-monitoring_public:4317"
@@ -43,12 +43,13 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 		err = errors.Join(inErr, shutdown(ctx))
 	}
 
-	res, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
 			semconv.ServiceName("threadStocks"),
 		),
+		resource.WithProcessRuntimeDescription(),
+		resource.WithTelemetrySDK(),
+		resource.WithHost(),
 	)
 	if err != nil {
 		return nil, err
@@ -84,6 +85,9 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 	}
 	shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
 	global.SetLoggerProvider(loggerProvider)
+
+	// Silence OpenTelemetry internal diagnostics to stdout/stderr
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(error) {}))
 
 	return shutdown, err
 }

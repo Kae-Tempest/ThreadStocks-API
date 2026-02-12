@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -242,7 +243,7 @@ func GetTokenFromCookie(r *http.Request) (*jwt.Token, error) {
 	return token, nil
 }
 
-func GetUserFromToken(r *http.Request, w http.ResponseWriter, db *gorm.DB) (model.User, error) {
+func GetUserFromToken(ctx context.Context, r *http.Request, w http.ResponseWriter, db *gorm.DB) (model.User, error) {
 	token, err := GetTokenFromCookie(r)
 	if err != nil {
 		return model.User{}, err
@@ -255,7 +256,7 @@ func GetUserFromToken(r *http.Request, w http.ResponseWriter, db *gorm.DB) (mode
 		w.WriteHeader(http.StatusInternalServerError)
 		return model.User{}, tokenErr
 	}
-	res := db.Preload("Threads").First(&user, "id = ?", uid)
+	res := db.WithContext(ctx).Preload("Threads").First(&user, "id = ?", uid)
 	if res.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return model.User{}, res.Error

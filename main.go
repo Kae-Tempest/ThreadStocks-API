@@ -70,7 +70,7 @@ func app() (*core.App, error) {
 
 	a.Controller = controller.NewControllers(a.DB, a.Logger)
 
-	err = a.DB.AutoMigrate(&model.User{}, &model.Thread{})
+	err = a.DB.WithContext(context.Background()).AutoMigrate(&model.User{}, &model.Thread{})
 	if err != nil {
 		return nil, err
 	}

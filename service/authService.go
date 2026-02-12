@@ -83,6 +83,9 @@ func (s *AuthService) LoginService(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("auth-service").Start(r.Context(), "RegisterService")
+	defer span.End()
+
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -93,12 +96,15 @@ func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
 
 	err := utils.BodyDecoder(r, &a)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		slog.Error("Bad Request")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if a.Password != a.ConfirmPassword {
+		span.SetStatus(codes.Error, "Passwords isn't same")
 		slog.Info(`P: %s, CP: %s`, a.Password, a.ConfirmPassword)
 		slog.Error("Passwords isn't same")
 		http.Error(w, "Passwords isn't same", http.StatusBadRequest)
@@ -107,6 +113,8 @@ func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
 
 	hashedPwd, err := hashPassword(a.Password)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		slog.Error("Error hashing password")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -118,8 +126,10 @@ func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
 	u.CreatedAt = time.Now()
 	u.UpdatedAt = time.Now()
 
-	result := s.db.Create(&u)
+	result := s.db.WithContext(ctx).Create(&u)
 	if result.Error != nil {
+		span.RecordError(result.Error)
+		span.SetStatus(codes.Error, result.Error.Error())
 		slog.Error("Error during creation in db")
 		http.Error(w, result.Error.Error(), http.StatusBadRequest)
 		return
@@ -127,6 +137,8 @@ func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
 
 	token, err := creatToken(u.ID)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		slog.Error("Error creating token")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
