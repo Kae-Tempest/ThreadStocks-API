@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -19,6 +20,18 @@ func main() {
 
 	_ = godotenv.Load(".env")
 
+	// Set up OpenTelemetry.
+	ctx := context.Background()
+	shutdown, err := setupOTelSDK(ctx)
+	if err != nil {
+		fmt.Printf("Failed to initialize OpenTelemetry: %v\n", err)
+		os.Exit(1)
+	}
+	// Handle shutdown properly so nothing leaks.
+	defer func() {
+		err = errors.Join(err, shutdown(context.Background()))
+	}()
+
 	app, appErr := app()
 	if appErr != nil {
 		fmt.Printf("Failed to initialize application: %v\n", appErr)
@@ -29,7 +42,9 @@ func main() {
 	router.Router(mux, app)
 
 	slog.Info("Listening on port 8080")
-	err := http.ListenAndServe(":8080", mux)
+
+	err = http.ListenAndServe(":8080", mux)
+
 	if errors.Is(err, http.ErrServerClosed) {
 		fmt.Println("http server closed")
 	} else if err != nil {
@@ -55,7 +70,7 @@ func app() (*core.App, error) {
 
 	a.Controller = controller.NewControllers(a.DB, a.Logger)
 
-	err = a.DB.AutoMigrate(&model.User{}, &model.Thread{})
+	err = a.DB.WithContext(context.Background()).AutoMigrate(&model.User{}, &model.Thread{})
 	if err != nil {
 		return nil, err
 	}

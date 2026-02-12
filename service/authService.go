@@ -9,6 +9,9 @@ import (
 	"threadStocks/model"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -26,6 +29,9 @@ func NewAuthService(db *gorm.DB, logger *slog.Logger) *AuthService {
 }
 
 func (s *AuthService) LoginService(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("auth-service").Start(r.Context(), "LoginService")
+	defer span.End()
+
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -36,19 +42,24 @@ func (s *AuthService) LoginService(w http.ResponseWriter, r *http.Request) {
 
 	err := utils.BodyDecoder(r, &a)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	s.db.First(&u, "email = ?", a.Email)
+	s.db.WithContext(ctx).First(&u, "email = ?", a.Email)
 
 	match := checkPasswordHash(a.Password, u.Password)
 	if !match {
+		span.SetStatus(codes.Error, "invalid credentials")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	token, tokenErr := creatToken(u.ID)
 	if tokenErr != nil {
+		span.RecordError(tokenErr)
+		span.SetStatus(codes.Error, tokenErr.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -72,6 +83,9 @@ func (s *AuthService) LoginService(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("auth-service").Start(r.Context(), "RegisterService")
+	defer span.End()
+
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -82,12 +96,15 @@ func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
 
 	err := utils.BodyDecoder(r, &a)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		slog.Error("Bad Request")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if a.Password != a.ConfirmPassword {
+		span.SetStatus(codes.Error, "Passwords isn't same")
 		slog.Info(`P: %s, CP: %s`, a.Password, a.ConfirmPassword)
 		slog.Error("Passwords isn't same")
 		http.Error(w, "Passwords isn't same", http.StatusBadRequest)
@@ -96,6 +113,8 @@ func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
 
 	hashedPwd, err := hashPassword(a.Password)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		slog.Error("Error hashing password")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -107,8 +126,10 @@ func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
 	u.CreatedAt = time.Now()
 	u.UpdatedAt = time.Now()
 
-	result := s.db.Create(&u)
+	result := s.db.WithContext(ctx).Create(&u)
 	if result.Error != nil {
+		span.RecordError(result.Error)
+		span.SetStatus(codes.Error, result.Error.Error())
 		slog.Error("Error during creation in db")
 		http.Error(w, result.Error.Error(), http.StatusBadRequest)
 		return
@@ -116,6 +137,8 @@ func (s *AuthService) RegisterService(w http.ResponseWriter, r *http.Request) {
 
 	token, err := creatToken(u.ID)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		slog.Error("Error creating token")
 		w.WriteHeader(http.StatusInternalServerError)
 		return

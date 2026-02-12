@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"threadStocks/core/utils"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	"gorm.io/gorm"
 )
 
@@ -20,18 +22,25 @@ func NewUserService(db *gorm.DB, logger *slog.Logger) *UserService {
 }
 
 func (s *UserService) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("user-service").Start(r.Context(), "GetCurrentUser")
+	defer span.End()
+
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	user, err := utils.GetUserFromToken(r, w, s.db)
+	user, err := utils.GetUserFromToken(ctx, r, w, s.db)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		// GetUserFromToken already writes error status to w
 		return
 	}
 
 	jsonData, jsonErr := json.Marshal(user)
 	if jsonErr != nil {
+		span.RecordError(jsonErr)
+		span.SetStatus(codes.Error, jsonErr.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Error marshaling user to JSON: %v", jsonErr)
 		return

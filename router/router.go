@@ -3,6 +3,8 @@ package router
 import (
 	"net/http"
 	"threadStocks/core"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 /**
@@ -19,30 +21,30 @@ func chain(h http.Handler, middlewares ...func(http.Handler) http.Handler) http.
 }
 
 func Router(s *http.ServeMux, a *core.App) {
-	s.HandleFunc("/login", a.Controller.Auth.HandleLogin)
-	s.HandleFunc("/register", a.Controller.Auth.HandleRegister)
-	s.Handle("/users/me", chain(
+	s.Handle("/login", otelhttp.NewHandler(http.HandlerFunc(a.Controller.Auth.HandleLogin), "HandleLogin"))
+	s.Handle("/register", otelhttp.NewHandler(http.HandlerFunc(a.Controller.Auth.HandleRegister), "HandleRegister"))
+	s.Handle("/users/me", otelhttp.NewHandler(chain(
 		http.HandlerFunc(a.Controller.User.Me),
-		core.AuthMiddleware))
-	s.Handle("/threads", chain(
+		core.AuthMiddleware), "Me"))
+	s.Handle("/threads", otelhttp.NewHandler(chain(
 		http.HandlerFunc(a.Controller.Thread.GetAllThreadByUser),
-		core.AuthMiddleware))
-	s.Handle("/threads/{id}", chain(
+		core.AuthMiddleware), "GetAllThreadByUser"))
+	s.Handle("/threads/{id}", otelhttp.NewHandler(chain(
 		http.HandlerFunc(a.Controller.Thread.GetThread),
-		core.AuthMiddleware))
-	s.Handle("/threads/create", chain(
+		core.AuthMiddleware), "GetThread"))
+	s.Handle("/threads/create", otelhttp.NewHandler(chain(
 		http.HandlerFunc(a.Controller.Thread.CreateThread),
-		core.AuthMiddleware))
-	s.Handle("/threads/update/{id}", chain(
+		core.AuthMiddleware), "CreateThread"))
+	s.Handle("/threads/update/{id}", otelhttp.NewHandler(chain(
 		http.HandlerFunc(a.Controller.Thread.UpdateThread),
-		core.AuthMiddleware))
-	s.Handle("/threads/delete/{id}", chain(
+		core.AuthMiddleware), "UpdateThread"))
+	s.Handle("/threads/delete/{id}", otelhttp.NewHandler(chain(
 		http.HandlerFunc(a.Controller.Thread.DeleteThread),
-		core.AuthMiddleware))
-	s.Handle("/threads/delete", chain(
+		core.AuthMiddleware), "DeleteThread"))
+	s.Handle("/threads/delete", otelhttp.NewHandler(chain(
 		http.HandlerFunc(a.Controller.Thread.DeleteMultipleThread),
-		core.AuthMiddleware))
-	s.Handle("/threads/update", chain(
+		core.AuthMiddleware), "DeleteMultipleThread"))
+	s.Handle("/threads/update", otelhttp.NewHandler(chain(
 		http.HandlerFunc(a.Controller.Thread.UpdateMultipleThread),
-		core.AuthMiddleware))
+		core.AuthMiddleware), "UpdateMultipleThread"))
 }
