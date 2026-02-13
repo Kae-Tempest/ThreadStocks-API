@@ -1,15 +1,12 @@
-FROM golang:1.25-alpine AS builder
+FROM golang:alpine
 
-WORKDIR  /app
+WORKDIR /app
 
-COPY . .
+RUN go install github.com/air-verse/air@latest
+
+COPY go.mod go.sum ./
 RUN go mod download
 
-#RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=mod -o tempestboard-api
-#
-#FROM scratch
-#
-#WORKDIR /app
-#COPY --from=builder /app/tempestboard-api .
+COPY . .
 
-CMD ["go", "run", "."]
+CMD ["air", "-c", ".air.toml"]
