@@ -7,73 +7,67 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"threadStocks/controller"
-	"threadStocks/core"
-	"threadStocks/database"
-	"threadStocks/model"
-	"threadStocks/router"
 
 	"github.com/joho/godotenv"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func main() {
+	if err := godotenv.Load(".env"); err != nil {
+		slog.Warn("Could not load .env file", "error", err)
+	}
 
-	_ = godotenv.Load(".env")
-
-	// Set up OpenTelemetry.
 	ctx := context.Background()
-	shutdown, err := setupOTelSDK(ctx)
+	shutdown, err := SetupOTelSDK(ctx)
 	if err != nil {
 		fmt.Printf("Failed to initialize OpenTelemetry: %v\n", err)
 		os.Exit(1)
 	}
-	// Handle shutdown properly so nothing leaks.
 	defer func() {
-		err = errors.Join(err, shutdown(context.Background()))
+		_ = shutdown(context.Background())
 	}()
 
-	app, appErr := app()
-	if appErr != nil {
-		fmt.Printf("Failed to initialize application: %v\n", appErr)
+	db, err := NewConnection()
+	if err != nil {
+		fmt.Printf("Failed to connect to database: %v\n", err)
 		os.Exit(1)
 	}
 
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
+
+	if err := db.AutoMigrate(&User{}, &Thread{}); err != nil {
+		fmt.Printf("Failed to migrate database: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Dependency Injection
+	accountRepo := NewAccountRepository(db)
+	accountService := NewAccountService(accountRepo, logger)
+	accountHandler := NewAccountHandler(accountService)
+
+	threadRepo := NewThreadRepository(db)
+	threadService := NewThreadService(threadRepo, logger)
+	threadHandler := NewThreadHandler(threadService)
+
+	// Router
 	mux := http.NewServeMux()
-	router.Router(mux, app)
 
-	slog.Info("Listening on port 8080")
+	// Auth routes
+	mux.Handle("POST /login", otelhttp.NewHandler(http.HandlerFunc(accountHandler.Login), "Login"))
+	mux.Handle("POST /register", otelhttp.NewHandler(http.HandlerFunc(accountHandler.Register), "Register"))
 
-	err = http.ListenAndServe(":8080", mux)
+	// Protected routes
+	mux.Handle("GET /users/me", Auth(otelhttp.NewHandler(http.HandlerFunc(accountHandler.Me), "Me")))
 
-	if errors.Is(err, http.ErrServerClosed) {
-		fmt.Println("http server closed")
-	} else if err != nil {
-		fmt.Println("http server error:", err)
+	mux.Handle("GET /threads", Auth(otelhttp.NewHandler(http.HandlerFunc(threadHandler.GetAll), "GetAllThreads")))
+	mux.Handle("POST /threads/create", Auth(otelhttp.NewHandler(http.HandlerFunc(threadHandler.Create), "CreateThread")))
+	mux.Handle("DELETE /threads/delete", Auth(otelhttp.NewHandler(http.HandlerFunc(threadHandler.DeleteMultiple), "DeleteMultipleThreads")))
+	mux.Handle("PUT /threads/update/{id}", Auth(otelhttp.NewHandler(http.HandlerFunc(threadHandler.Update), "UpdateThread")))
+	mux.Handle("DELETE /threads/delete/{id}", Auth(otelhttp.NewHandler(http.HandlerFunc(threadHandler.Delete), "DeleteThread")))
+
+	slog.Info("Server listening on :8080")
+	if err := http.ListenAndServe(":8080", mux); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		fmt.Printf("HTTP server error: %v\n", err)
 		os.Exit(1)
 	}
-}
-
-func app() (*core.App, error) {
-	db, err := database.NewConnection()
-	if err != nil {
-		return nil, fmt.Errorf("database connection error: %v", err)
-	}
-
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		AddSource: true,
-	}))
-
-	a := &core.App{
-		DB:     db,
-		Logger: logger,
-	}
-
-	a.Controller = controller.NewControllers(a.DB, a.Logger)
-
-	err = a.DB.WithContext(context.Background()).AutoMigrate(&model.User{}, &model.Thread{})
-	if err != nil {
-		return nil, err
-	}
-
-	return a, nil
 }
