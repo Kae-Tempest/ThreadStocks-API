@@ -55,6 +55,7 @@ func main() {
 	// Auth routes
 	mux.Handle("POST /login", otelhttp.NewHandler(http.HandlerFunc(accountHandler.Login), "Login"))
 	mux.Handle("POST /register", otelhttp.NewHandler(http.HandlerFunc(accountHandler.Register), "Register"))
+	mux.Handle("POST /logout", otelhttp.NewHandler(http.HandlerFunc(accountHandler.Logout), "Logout"))
 
 	// Protected routes
 	mux.Handle("GET /users/me", Auth(otelhttp.NewHandler(http.HandlerFunc(accountHandler.Me), "Me")))

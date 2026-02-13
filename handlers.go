@@ -117,6 +117,20 @@ func (h *AccountHandler) setTokenCookie(w http.ResponseWriter, token string) {
 	})
 }
 
+func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	_, span := otel.Tracer("account-handler").Start(r.Context(), "Logout")
+	defer span.End()
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		MaxAge:   -1,
+		Path:     "/",
+		HttpOnly: true,
+	})
+	w.WriteHeader(http.StatusOK)
+}
+
 // --- Thread Handler ---
 
 type ThreadHandler struct {
