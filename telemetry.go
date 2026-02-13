@@ -20,9 +20,9 @@ import (
 
 const collectorEndpoint = "docker-monitoring-collector.docker-monitoring_public:4317"
 
-// setupOTelSDK bootstraps the OpenTelemetry pipeline.
+// SetupOTelSDK bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
-func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
+func SetupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 	var shutdownFuncs []func(context.Context) error
 	var err error
 
@@ -37,6 +37,7 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 		shutdownFuncs = nil
 		return err
 	}
+	_ = shutdown // Mark as used to avoid warnings if not called immediately
 
 	// handleErr calls shutdown for cleanup and makes sure that all errors are returned.
 	handleErr := func(inErr error) {

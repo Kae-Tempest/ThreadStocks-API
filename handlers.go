@@ -1,0 +1,269 @@
+package main
+
+import (
+	"encoding/json"
+	"net/http"
+	"strconv"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+)
+
+// --- Account Handler ---
+
+type AccountHandler struct {
+	service *AccountService
+}
+
+func NewAccountHandler(service *AccountService) *AccountHandler {
+	return &AccountHandler{service: service}
+}
+
+func (h *AccountHandler) Me(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("account-handler").Start(r.Context(), "Me")
+	defer span.End()
+
+	userID, ok := GetUserIDFromContext(ctx)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	user, err := h.service.GetUserByID(ctx, userID)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		// Too late to change Header if encoding fails, but we can log it
+	}
+}
+
+func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("account-handler").Start(r.Context(), "Login")
+	defer span.End()
+
+	var req LoginDto
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	token, err := h.service.Login(ctx, req.Email, req.Password)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]string{"error": err.Error()}); err != nil {
+			span.RecordError(err)
+		}
+		return
+	}
+
+	h.setTokenCookie(w, token)
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write([]byte("{}")); err != nil {
+		span.RecordError(err)
+	}
+}
+
+func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("account-handler").Start(r.Context(), "Register")
+	defer span.End()
+
+	var req RegisterDto
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	token, err := h.service.Register(ctx, req)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]string{"error": err.Error()}); err != nil {
+			span.RecordError(err)
+		}
+		return
+	}
+
+	h.setTokenCookie(w, token)
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write([]byte("{}")); err != nil {
+		span.RecordError(err)
+	}
+}
+
+func (h *AccountHandler) setTokenCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    token,
+		MaxAge:   86400,
+		Path:     "/",
+		Secure:   false,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// --- Thread Handler ---
+
+type ThreadHandler struct {
+	service *ThreadService
+}
+
+func NewThreadHandler(service *ThreadService) *ThreadHandler {
+	return &ThreadHandler{service: service}
+}
+
+func (h *ThreadHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("thread-handler").Start(r.Context(), "GetAll")
+	defer span.End()
+
+	userID, _ := GetUserIDFromContext(ctx)
+	threads, err := h.service.GetThreadsByUserID(ctx, userID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(threads); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+}
+
+func (h *ThreadHandler) Create(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("thread-handler").Start(r.Context(), "Create")
+	defer span.End()
+
+	userID, _ := GetUserIDFromContext(ctx)
+	var dto ThreadDto
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	thread := Thread{
+		UserID:      userID,
+		ThreadId:    dto.ThreadId,
+		IsE:         dto.IsE,
+		IsC:         dto.IsC,
+		Brand:       dto.Brand,
+		ThreadCount: dto.ThreadCount,
+	}
+
+	if err := h.service.CreateThread(ctx, &thread); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(thread); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+}
+
+func (h *ThreadHandler) DeleteMultiple(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("thread-handler").Start(r.Context(), "DeleteMultiple")
+	defer span.End()
+
+	userID, _ := GetUserIDFromContext(ctx)
+	var ids []string
+	if err := json.NewDecoder(r.Body).Decode(&ids); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.DeleteMultiple(ctx, userID, ids); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *ThreadHandler) Update(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("thread-handler").Start(r.Context(), "Update")
+	defer span.End()
+
+	userID, _ := GetUserIDFromContext(ctx)
+	idStr := r.PathValue("id")
+	id64, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	id := uint(id64)
+
+	var dto ThreadDto
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	thread := Thread{
+		UserID:      userID,
+		ThreadId:    dto.ThreadId,
+		IsE:         dto.IsE,
+		IsC:         dto.IsC,
+		Brand:       dto.Brand,
+		ThreadCount: dto.ThreadCount,
+	}
+	thread.ID = id
+
+	if err := h.service.UpdateThread(ctx, &thread); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(thread); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+}
+
+func (h *ThreadHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("thread-handler").Start(r.Context(), "Delete")
+	defer span.End()
+
+	userID, _ := GetUserIDFromContext(ctx)
+	idStr := r.PathValue("id")
+	id64, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	id := uint(id64)
+
+	if err := h.service.DeleteThread(ctx, userID, id); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
