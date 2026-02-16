@@ -45,11 +45,18 @@ type ThreadDto struct {
 	ThreadCount int64  `json:"thread_count"`
 }
 
+type PasswordDto struct {
+	NewPassword        string `json:"new_password"`
+	ConfirmNewPassWord string `json:"confirm_new_password"`
+	CurrentPassword    string `json:"current_password"`
+}
+
 // Interfaces
 type UserRepository interface {
 	GetByID(ctx context.Context, id uint) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	Create(ctx context.Context, user *User) error
+	Update(ctx context.Context, user *User) error
 }
 
 type ThreadRepository interface {

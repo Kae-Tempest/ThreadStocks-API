@@ -131,6 +131,36 @@ func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (h *AccountHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("account-handler").Start(r.Context(), "UpdatePassword")
+	defer span.End()
+
+	userId, _ := GetUserIDFromContext(ctx)
+	var dto PasswordDto
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.service.repo.GetByID(ctx, userId)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	errUPassword := h.service.UpdatePassword(ctx, dto, user)
+	if errUPassword != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, errUPassword.Error())
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 // --- Thread Handler ---
 
 type ThreadHandler struct {

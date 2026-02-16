@@ -36,6 +36,10 @@ func (r *accountRepository) Create(ctx context.Context, user *User) error {
 	return r.db.WithContext(ctx).Create(user).Error
 }
 
+func (r *accountRepository) Update(ctx context.Context, user *User) error {
+	return r.db.WithContext(ctx).Model(user).Where("id = ?", user.ID).Updates(user).Error
+}
+
 // --- Thread Repository ---
 
 type threadRepository struct {

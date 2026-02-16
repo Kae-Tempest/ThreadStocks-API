@@ -59,6 +59,7 @@ func main() {
 
 	// Protected routes
 	mux.Handle("GET /users/me", Auth(otelhttp.NewHandler(http.HandlerFunc(accountHandler.Me), "Me")))
+	mux.Handle("PUT /users/update-password", Auth(otelhttp.NewHandler(http.HandlerFunc(accountHandler.UpdatePassword), "UpdatePassword")))
 	mux.Handle("GET /threads", Auth(otelhttp.NewHandler(http.HandlerFunc(threadHandler.GetAll), "GetAllThreads")))
 	mux.Handle("POST /threads/create", Auth(otelhttp.NewHandler(http.HandlerFunc(threadHandler.Create), "CreateThread")))
 	mux.Handle("DELETE /threads/delete", Auth(otelhttp.NewHandler(http.HandlerFunc(threadHandler.DeleteMultiple), "DeleteMultipleThreads")))

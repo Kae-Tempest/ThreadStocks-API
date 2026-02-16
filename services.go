@@ -78,6 +78,31 @@ func (s *AccountService) createToken(userID uint) (string, error) {
 	return claims.SignedString(GetSecretKey())
 }
 
+func (s *AccountService) UpdatePassword(ctx context.Context, req PasswordDto, user *User) error {
+	if req.NewPassword != req.ConfirmNewPassWord {
+		s.log.Error("passwords do not match")
+		s.log.Info(req.NewPassword)
+		s.log.Info(req.ConfirmNewPassWord)
+		return errors.New("passwords do not match")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.CurrentPassword)); err != nil {
+		return errors.New("invalid current password")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), 14)
+	if err != nil {
+		return err
+	}
+
+	user.Password = string(hashedPassword)
+
+	if err := s.repo.Update(ctx, user); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // --- Thread Service ---
 
 type ThreadService struct {
