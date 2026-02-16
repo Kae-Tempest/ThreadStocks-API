@@ -21,6 +21,7 @@ type Thread struct {
 	ThreadId    string `gorm:"uniqueIndex:idx_user_thread" json:"thread_id"`
 	IsE         bool   `json:"is_e"`
 	IsC         bool   `json:"is_c"`
+	IsS         bool   `json:"is_s"`
 	Brand       string `json:"brand"`
 	ThreadCount int64  `json:"thread_count"`
 }
@@ -41,6 +42,7 @@ type ThreadDto struct {
 	ThreadId    string `json:"thread_id"`
 	IsE         bool   `json:"is_e"`
 	IsC         bool   `json:"is_c"`
+	IsS         bool   `json:"is_s"`
 	Brand       string `json:"brand"`
 	ThreadCount int64  `json:"thread_count"`
 }

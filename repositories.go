@@ -79,6 +79,7 @@ func (r *threadRepository) Create(ctx context.Context, thread *Thread) error {
 				"deleted_at":   nil,
 				"is_e":         thread.IsE,
 				"is_c":         thread.IsC,
+				"is_s":         thread.IsS,
 				"brand":        thread.Brand,
 				"thread_count": thread.ThreadCount,
 			}).Error

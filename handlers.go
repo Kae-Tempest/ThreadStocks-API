@@ -205,6 +205,7 @@ func (h *ThreadHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ThreadId:    dto.ThreadId,
 		IsE:         dto.IsE,
 		IsC:         dto.IsC,
+		IsS:         dto.IsS,
 		Brand:       dto.Brand,
 		ThreadCount: dto.ThreadCount,
 	}
@@ -269,6 +270,7 @@ func (h *ThreadHandler) Update(w http.ResponseWriter, r *http.Request) {
 		ThreadId:    dto.ThreadId,
 		IsE:         dto.IsE,
 		IsC:         dto.IsC,
+		IsS:         dto.IsS,
 		Brand:       dto.Brand,
 		ThreadCount: dto.ThreadCount,
 	}
