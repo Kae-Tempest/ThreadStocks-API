@@ -101,3 +101,29 @@ func (r *threadRepository) Delete(ctx context.Context, userID uint, id uint) err
 func (r *threadRepository) DeleteMultiple(ctx context.Context, userID uint, ids []string) error {
 	return r.db.WithContext(ctx).Where("user_id = ? AND thread_id IN ?", userID, ids).Delete(&Thread{}).Error
 }
+
+// --- Password Reset Repository ---
+
+type passwordResetRepository struct {
+	db *gorm.DB
+}
+
+func NewPasswordResetRepository(db *gorm.DB) PasswordResetTokenRepository {
+	return &passwordResetRepository{db: db}
+}
+
+func (r *passwordResetRepository) Create(ctx context.Context, token *PasswordResetToken) error {
+	return r.db.WithContext(ctx).Create(token).Error
+}
+
+func (r *passwordResetRepository) GetByToken(ctx context.Context, token string) (*PasswordResetToken, error) {
+	var prt PasswordResetToken
+	if err := r.db.WithContext(ctx).Preload("User").First(&prt, "token = ?", token).Error; err != nil {
+		return nil, err
+	}
+	return &prt, nil
+}
+
+func (r *passwordResetRepository) DeleteByUserID(ctx context.Context, userID uint) error {
+	return r.db.WithContext(ctx).Where("user_id = ?", userID).Delete(&PasswordResetToken{}).Error
+}

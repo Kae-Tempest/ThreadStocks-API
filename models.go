@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -26,6 +27,14 @@ type Thread struct {
 	ThreadCount int64  `json:"thread_count"`
 }
 
+type PasswordResetToken struct {
+	gorm.Model
+	UserID    uint      `json:"user_id"`
+	User      User      `gorm:"foreignKey:UserID" json:"-"`
+	Token     string    `gorm:"uniqueIndex" json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
 type LoginDto struct {
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
@@ -36,6 +45,23 @@ type RegisterDto struct {
 	Email           string `json:"email" binding:"required"`
 	Password        string `json:"password" binding:"required"`
 	ConfirmPassword string `json:"confirm_password" binding:"required"`
+}
+
+type ForgotPasswordDto struct {
+	Email string `json:"email" binding:"required"`
+}
+
+type ResetPasswordDto struct {
+	Token           string `json:"token" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required"`
+	ConfirmPassword string `json:"confirm_password" binding:"required"`
+}
+
+type ContactDto struct {
+	Name    string `json:"name" binding:"required"`
+	Email   string `json:"email" binding:"required"`
+	Subject string `json:"subject" binding:"required"`
+	Message string `json:"message" binding:"required"`
 }
 
 type ThreadDto struct {
@@ -68,4 +94,10 @@ type ThreadRepository interface {
 	Update(ctx context.Context, thread *Thread) error
 	Delete(ctx context.Context, userID uint, id uint) error
 	DeleteMultiple(ctx context.Context, userID uint, ids []string) error
+}
+
+type PasswordResetTokenRepository interface {
+	Create(ctx context.Context, token *PasswordResetToken) error
+	GetByToken(ctx context.Context, token string) (*PasswordResetToken, error)
+	DeleteByUserID(ctx context.Context, userID uint) error
 }

@@ -35,14 +35,16 @@ func main() {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
 
-	if err := db.AutoMigrate(&User{}, &Thread{}); err != nil {
+	if err := db.AutoMigrate(&User{}, &Thread{}, &PasswordResetToken{}); err != nil {
 		fmt.Printf("Failed to migrate database: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Dependency Injection
 	accountRepo := NewAccountRepository(db)
-	accountService := NewAccountService(accountRepo, logger)
+	resetRepo := NewPasswordResetRepository(db)
+	emailService := NewEmailService(logger)
+	accountService := NewAccountService(accountRepo, resetRepo, emailService, logger)
 	accountHandler := NewAccountHandler(accountService)
 
 	threadRepo := NewThreadRepository(db)
@@ -56,6 +58,9 @@ func main() {
 	mux.Handle("POST /login", otelhttp.NewHandler(http.HandlerFunc(accountHandler.Login), "Login"))
 	mux.Handle("POST /register", otelhttp.NewHandler(http.HandlerFunc(accountHandler.Register), "Register"))
 	mux.Handle("POST /logout", otelhttp.NewHandler(http.HandlerFunc(accountHandler.Logout), "Logout"))
+	mux.Handle("POST /forgot-password", otelhttp.NewHandler(http.HandlerFunc(accountHandler.ForgotPassword), "ForgotPassword"))
+	mux.Handle("POST /reset-password", otelhttp.NewHandler(http.HandlerFunc(accountHandler.ResetPassword), "ResetPassword"))
+	mux.Handle("POST /contact", otelhttp.NewHandler(http.HandlerFunc(accountHandler.Contact), "Contact"))
 
 	// Protected routes
 	mux.Handle("GET /users/me", Auth(otelhttp.NewHandler(http.HandlerFunc(accountHandler.Me), "Me")))

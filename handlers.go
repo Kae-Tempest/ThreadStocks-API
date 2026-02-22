@@ -105,6 +105,122 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *AccountHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("account-handler").Start(r.Context(), "ForgotPassword")
+	defer span.End()
+
+	var req ForgotPasswordDto
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.ForgotPassword(ctx, req.Email); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Failed to send reset email"})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Email sent if user exists"})
+}
+
+func (h *AccountHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("account-handler").Start(r.Context(), "ResetPassword")
+	defer span.End()
+
+	var req ResetPasswordDto
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.ResetPassword(ctx, req); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Password updated successfully"})
+}
+
+func (h *AccountHandler) Contact(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("account-handler").Start(r.Context(), "Contact")
+	defer span.End()
+
+	var req ContactDto
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.SendContact(ctx, req); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Failed to send message"})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Message sent successfully"})
+}
+
+func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	_, span := otel.Tracer("account-handler").Start(r.Context(), "Logout")
+	defer span.End()
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		MaxAge:   -1,
+		Path:     "/",
+		HttpOnly: true,
+	})
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *AccountHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer("account-handler").Start(r.Context(), "UpdatePassword")
+	defer span.End()
+
+	userId, _ := GetUserIDFromContext(ctx)
+	var dto PasswordDto
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.service.repo.GetByID(ctx, userId)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	errUPassword := h.service.UpdatePassword(ctx, dto, user)
+	if errUPassword != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, errUPassword.Error())
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func (h *AccountHandler) setTokenCookie(w http.ResponseWriter, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
