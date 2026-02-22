@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"net/smtp"
 	"os"
 )
@@ -12,33 +13,79 @@ type EmailService struct {
 	username string
 	password string
 	from     string
+	logger   *slog.Logger
 }
 
-func NewEmailService() *EmailService {
+func NewEmailService(logger *slog.Logger) *EmailService {
 	return &EmailService{
 		host:     os.Getenv("SMTP_HOST"),
 		port:     os.Getenv("SMTP_PORT"),
 		username: os.Getenv("SMTP_USER"),
 		password: os.Getenv("SMTP_PASSWORD"),
 		from:     os.Getenv("SMTP_FROM"),
+		logger:   logger,
 	}
 }
 
 func (s *EmailService) SendEmail(to string, subject string, body string) error {
-	auth := smtp.PlainAuth("", s.username, s.password, s.host)
-	fmt.Println(auth)
 	addr := fmt.Sprintf("%s:%s", s.host, s.port)
-
 	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-version: 1.0;\r\nContent-Type: text/html; charset=\"UTF-8\";\r\n\r\n%s",
 		s.from, to, subject, body)
 
-	err := smtp.SendMail(addr, auth, s.from, []string{to}, []byte(msg))
+	s.logger.Info("Starting email sending", "to", to, "subject", subject, "host", s.host)
+
+	// Connexion directe au serveur SMTP
+	c, err := smtp.Dial(addr)
 	if err != nil {
-		fmt.Printf("ERROR: Failed to send email to %s: %v\n", to, err)
+		s.logger.Error("Failed to connect to SMTP server", "addr", addr, "error", err)
+		return err
+	}
+	defer func(c *smtp.Client) {
+		err := c.Quit()
+		if err != nil {
+
+		}
+	}(c)
+
+	// Authentification si nécessaire
+	if s.username != "" && s.password != "" {
+		s.logger.Debug("Authenticating with SMTP server", "user", s.username)
+		auth := smtp.PlainAuth("", s.username, s.password, s.host)
+		if err = c.Auth(auth); err != nil {
+			s.logger.Error("SMTP authentication failed", "error", err)
+			return err
+		}
+	}
+
+	// Définition de l'expéditeur et du destinataire
+	if err = c.Mail(s.username); err != nil {
+		s.logger.Error("Failed to set SMTP sender", "from", s.username, "error", err)
+		return err
+	}
+	if err = c.Rcpt(to); err != nil {
+		s.logger.Error("Failed to set SMTP recipient", "to", to, "error", err)
 		return err
 	}
 
-	fmt.Printf("DEBUG: Email sent successfully to %s\n", to)
+	// Envoi du corps du message
+	s.logger.Debug("Sending email data", "to", to)
+	w, err := c.Data()
+	if err != nil {
+		s.logger.Error("Failed to open SMTP data writer", "error", err)
+		return err
+	}
+	_, err = w.Write([]byte(msg))
+	if err != nil {
+		s.logger.Error("Failed to write email data", "error", err)
+		return err
+	}
+	err = w.Close()
+	if err != nil {
+		s.logger.Error("Failed to close SMTP data writer", "error", err)
+		return err
+	}
+
+	s.logger.Info("Email sent successfully", "to", to)
 	return nil
 }
 

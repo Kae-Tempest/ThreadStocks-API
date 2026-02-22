@@ -43,7 +43,7 @@ func main() {
 	// Dependency Injection
 	accountRepo := NewAccountRepository(db)
 	resetRepo := NewPasswordResetRepository(db)
-	emailService := NewEmailService()
+	emailService := NewEmailService(logger)
 	accountService := NewAccountService(accountRepo, resetRepo, emailService, logger)
 	accountHandler := NewAccountHandler(accountService)
 
