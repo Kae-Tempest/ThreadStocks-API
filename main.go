@@ -42,7 +42,9 @@ func main() {
 
 	// Dependency Injection
 	accountRepo := NewAccountRepository(db)
-	accountService := NewAccountService(accountRepo, logger)
+	resetRepo := NewPasswordResetRepository(db)
+	emailService := NewEmailService()
+	accountService := NewAccountService(accountRepo, resetRepo, emailService, logger)
 	accountHandler := NewAccountHandler(accountService)
 
 	threadRepo := NewThreadRepository(db)
@@ -55,10 +57,14 @@ func main() {
 	// Auth routes
 	mux.Handle("POST /login", otelhttp.NewHandler(http.HandlerFunc(accountHandler.Login), "Login"))
 	mux.Handle("POST /register", otelhttp.NewHandler(http.HandlerFunc(accountHandler.Register), "Register"))
+	mux.Handle("POST /logout", otelhttp.NewHandler(http.HandlerFunc(accountHandler.Logout), "Logout"))
+	mux.Handle("POST /forgot-password", otelhttp.NewHandler(http.HandlerFunc(accountHandler.ForgotPassword), "ForgotPassword"))
+	mux.Handle("POST /reset-password", otelhttp.NewHandler(http.HandlerFunc(accountHandler.ResetPassword), "ResetPassword"))
+	mux.Handle("POST /contact", otelhttp.NewHandler(http.HandlerFunc(accountHandler.Contact), "Contact"))
 
 	// Protected routes
 	mux.Handle("GET /users/me", Auth(otelhttp.NewHandler(http.HandlerFunc(accountHandler.Me), "Me")))
-
+	mux.Handle("PUT /users/update-password", Auth(otelhttp.NewHandler(http.HandlerFunc(accountHandler.UpdatePassword), "UpdatePassword")))
 	mux.Handle("GET /threads", Auth(otelhttp.NewHandler(http.HandlerFunc(threadHandler.GetAll), "GetAllThreads")))
 	mux.Handle("POST /threads/create", Auth(otelhttp.NewHandler(http.HandlerFunc(threadHandler.Create), "CreateThread")))
 	mux.Handle("DELETE /threads/delete", Auth(otelhttp.NewHandler(http.HandlerFunc(threadHandler.DeleteMultiple), "DeleteMultipleThreads")))
