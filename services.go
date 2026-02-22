@@ -135,12 +135,18 @@ func (s *AccountService) ResetPassword(ctx context.Context, req ResetPasswordDto
 		return errors.New("passwords do not match")
 	}
 
+	s.log.Info("ResetPassword called", "token_length", len(req.Token), "token_prefix", req.Token[:min(8, len(req.Token))])
+
 	resetToken, err := s.resetRepo.GetByToken(ctx, req.Token)
 	if err != nil {
+		s.log.Error("Failed to find reset token", "error", err, "token_prefix", req.Token[:min(8, len(req.Token))])
 		return errors.New("invalid or expired token")
 	}
 
+	s.log.Info("Token found", "user_id", resetToken.UserID, "expires_at", resetToken.ExpiresAt, "now", time.Now())
+
 	if resetToken.ExpiresAt.Before(time.Now()) {
+		s.log.Warn("Token expired", "expires_at", resetToken.ExpiresAt, "now", time.Now())
 		_ = s.resetRepo.DeleteByUserID(ctx, resetToken.UserID)
 		return errors.New("token expired")
 	}

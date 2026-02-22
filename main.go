@@ -35,7 +35,7 @@ func main() {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
 
-	if err := db.AutoMigrate(&User{}, &Thread{}); err != nil {
+	if err := db.AutoMigrate(&User{}, &Thread{}, &PasswordResetToken{}); err != nil {
 		fmt.Printf("Failed to migrate database: %v\n", err)
 		os.Exit(1)
 	}
