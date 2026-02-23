@@ -1,6 +1,6 @@
 # threadStocks - Gestionnaire de Stock de Fils pour Point de Croix / Cross-stitch Thread Inventory Manager
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/Kae-Tempest/threadStocks)](https://golang.org/)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/Kae-Tempest/threadStocks-API)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ---
